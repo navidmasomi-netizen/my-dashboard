@@ -1,19 +1,27 @@
-import { useState } from 'react';
 import {
   Box, AppBar, Toolbar, IconButton, Typography, Avatar,
-  Badge, Drawer, useMediaQuery, Tooltip, InputBase
+  Badge, Paper, BottomNavigation, BottomNavigationAction,
+  useMediaQuery, Tooltip, InputBase
 } from '@mui/material';
 import {
-  Menu as MenuIcon, Notifications, Search,
-  DarkMode, LightMode
+  Notifications, Search, DarkMode, LightMode,
+  Dashboard, People, SupervisedUserCircle, Payments, Assessment
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useColorMode } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const SIDEBAR_WIDTH = 240;
+
+const NAV_ITEMS = [
+  { label: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
+  { label: 'Leads', icon: <People />, path: '/leads' },
+  { label: 'Affiliates', icon: <SupervisedUserCircle />, path: '/affiliates' },
+  { label: 'Commissions', icon: <Payments />, path: '/commissions' },
+  { label: 'Reports', icon: <Assessment />, path: '/reports' },
+];
 
 const PAGE_TITLES = {
   '/dashboard': { title: 'Dashboard', subtitle: 'Welcome back — here\'s your overview' },
@@ -26,10 +34,10 @@ const PAGE_TITLES = {
 export default function Layout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const { toggleColorMode, mode } = useColorMode();
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const pageInfo = PAGE_TITLES[location.pathname] || { title: 'AffiliateDesk', subtitle: '' };
 
@@ -39,28 +47,25 @@ export default function Layout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — fixed, full height */}
       {!isMobile && (
         <Box
           component="nav"
-          sx={{ width: SIDEBAR_WIDTH, flexShrink: 0, position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 1200 }}
+          sx={{
+            width: SIDEBAR_WIDTH,
+            flexShrink: 0,
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            zIndex: 1200,
+          }}
         >
           <Sidebar />
         </Box>
       )}
 
-      {/* Mobile drawer */}
-      {isMobile && (
-        <Drawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          PaperProps={{ sx: { width: SIDEBAR_WIDTH, bgcolor: 'transparent', border: 'none' } }}
-        >
-          <Sidebar onNav={() => setDrawerOpen(false)} />
-        </Drawer>
-      )}
-
-      {/* Main */}
+      {/* Main column */}
       <Box
         component="main"
         sx={{
@@ -69,6 +74,8 @@ export default function Layout() {
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          /* Reserve space for mobile bottom navbar */
+          pb: isMobile ? '56px' : 0,
         }}
       >
         {/* Top AppBar */}
@@ -82,24 +89,18 @@ export default function Layout() {
           }}
         >
           <Toolbar sx={{ gap: 1.5, px: { xs: 2, md: 3.5 } }}>
-            {isMobile && (
-              <IconButton edge="start" onClick={() => setDrawerOpen(true)} sx={{ color: 'text.primary' }}>
-                <MenuIcon />
-              </IconButton>
-            )}
-
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="subtitle1" sx={{ lineHeight: 1.2, fontWeight: 700 }}>
                 {pageInfo.title}
               </Typography>
               {pageInfo.subtitle && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" noWrap>
                   {pageInfo.subtitle}
                 </Typography>
               )}
             </Box>
 
-            {/* Search */}
+            {/* Search — hidden on xs */}
             <Box
               sx={{
                 display: { xs: 'none', sm: 'flex' },
@@ -135,13 +136,17 @@ export default function Layout() {
               </Badge>
             </IconButton>
 
-            {/* Avatar */}
+            {/* Avatar + name */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
               <Avatar
                 sx={{
-                  width: 36, height: 36, fontSize: '0.78rem', fontWeight: 700,
+                  width: 36,
+                  height: 36,
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
                   background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
               >
                 {initials}
@@ -163,6 +168,35 @@ export default function Layout() {
           <Outlet />
         </Box>
       </Box>
+
+      {/* Mobile bottom navbar — replaces sidebar on small screens */}
+      {isMobile && (
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1200,
+          }}
+        >
+          <BottomNavigation
+            value={location.pathname}
+            onChange={(_, newPath) => navigate(newPath)}
+            showLabels
+          >
+            {NAV_ITEMS.map((item) => (
+              <BottomNavigationAction
+                key={item.path}
+                label={item.label}
+                icon={item.icon}
+                value={item.path}
+              />
+            ))}
+          </BottomNavigation>
+        </Paper>
+      )}
     </Box>
   );
 }

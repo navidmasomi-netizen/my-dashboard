@@ -68,7 +68,7 @@ export default function Affiliates() {
               size="small"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: 220 }}
+              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><Search sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>,
               }}
@@ -88,8 +88,8 @@ export default function Affiliates() {
             </Box>
           </Box>
 
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table size="small" sx={{ minWidth: 860 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Affiliate</TableCell>

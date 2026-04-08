@@ -170,8 +170,8 @@ export default function Reports() {
           <Card>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ mb: 2.5 }}>Top Countries by Lead Volume</Typography>
-              <TableContainer>
-                <Table size="small">
+              <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <Table size="small" sx={{ minWidth: 500 }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Country</TableCell>

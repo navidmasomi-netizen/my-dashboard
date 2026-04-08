@@ -80,14 +80,14 @@ export default function Commissions() {
       {/* Table */}
       <Card>
         <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
             <Typography variant="h6" sx={{ flex: 1 }}>Commission Records</Typography>
             <Button variant="outlined" size="small" startIcon={<Payments />}>Process Payouts</Button>
             <Tooltip title="Export"><IconButton size="small"><FileDownload /></IconButton></Tooltip>
           </Box>
 
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table size="small" sx={{ minWidth: 920 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>

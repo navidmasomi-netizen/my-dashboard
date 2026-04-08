@@ -102,8 +102,8 @@ export default function Dashboard() {
                 <Typography variant="h6">Top Affiliates</Typography>
                 <Chip label="This Month" size="small" variant="outlined" />
               </Box>
-              <TableContainer>
-                <Table size="small">
+              <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <Table size="small" sx={{ minWidth: 520 }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Affiliate</TableCell>

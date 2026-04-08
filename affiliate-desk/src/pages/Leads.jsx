@@ -82,7 +82,7 @@ export default function Leads() {
               size="small"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: 220 }}
+              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><Search sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>,
               }}
@@ -103,8 +103,8 @@ export default function Leads() {
           </Box>
 
           {/* Table */}
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table size="small" sx={{ minWidth: 780 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Lead</TableCell>
