@@ -1,32 +1,43 @@
 import { useState } from 'react';
 import {
   Box, Card, CardContent, TextField, Button,
-  Typography, Alert, Link, Divider, IconButton, Tooltip
+  Typography, Alert, Link, Divider, IconButton, Tooltip, MenuItem
 } from '@mui/material';
 import { LightMode, DarkMode } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useColorMode } from '../contexts/ThemeContext';
 
+const ROLES = ['IB Manager', 'Affiliate Manager', 'Admin', 'Analyst'];
+
 export default function SignUp() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [role, setRole] = useState('IB Manager');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
   const { toggleColorMode, mode } = useColorMode();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     if (!name || !email || !password || !confirm) { setError('Please fill in all fields.'); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
-    const ok = signup(name, email, password);
-    if (ok) navigate('/dashboard');
-    else setError('Sign-up failed. Please try again.');
+    setLoading(true);
+    const result = await signup(name, email, password, role);
+    setLoading(false);
+    if (result.success) {
+      setSuccess('Account created! You can now sign in.');
+    } else {
+      setError(result.message);
+    }
   };
 
   return (
@@ -84,6 +95,21 @@ export default function SignUp() {
           </Typography>
 
           {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+              {success}{' '}
+              <Link
+                component="button"
+                type="button"
+                onClick={() => navigate('/login')}
+                underline="hover"
+                color="inherit"
+                sx={{ fontWeight: 600, verticalAlign: 'baseline' }}
+              >
+                Sign in
+              </Link>
+            </Alert>
+          )}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
@@ -93,6 +119,7 @@ export default function SignUp() {
               onChange={(e) => setName(e.target.value)}
               sx={{ mb: 2 }}
               autoFocus
+              disabled={!!success}
             />
             <TextField
               label="Email address"
@@ -101,7 +128,19 @@ export default function SignUp() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               sx={{ mb: 2 }}
+              disabled={!!success}
             />
+            <TextField
+              label="Role"
+              select
+              fullWidth
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              sx={{ mb: 2 }}
+              disabled={!!success}
+            >
+              {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+            </TextField>
             <TextField
               label="Password"
               type="password"
@@ -109,6 +148,7 @@ export default function SignUp() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               sx={{ mb: 2 }}
+              disabled={!!success}
             />
             <TextField
               label="Confirm password"
@@ -117,9 +157,10 @@ export default function SignUp() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               sx={{ mb: 3 }}
+              disabled={!!success}
             />
-            <Button type="submit" variant="contained" fullWidth size="large">
-              Create Account
+            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading || !!success}>
+              {loading ? 'Creating account…' : 'Create Account'}
             </Button>
           </Box>
 

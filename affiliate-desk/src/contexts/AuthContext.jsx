@@ -1,25 +1,37 @@
 import { createContext, useContext, useState } from 'react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  const login = (email, password) => {
-    // Mock auth — accept any non-empty credentials
-    if (email && password) {
-      setUser({ name: 'Navid Masomi', email, role: 'IB Manager' });
-      return true;
+  const login = async (email, password) => {
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const json = await res.json();
+      if (json.success) setUser(json.data); // { name, role }
+      return json;
+    } catch {
+      return { success: false, message: 'Could not connect to the server.' };
     }
-    return false;
   };
 
-  const signup = (name, email, password) => {
-    if (name && email && password) {
-      setUser({ name, email, role: 'IB Manager' });
-      return true;
+  const signup = async (name, email, password, role) => {
+    try {
+      const res = await fetch(`${API}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      return await res.json();
+    } catch {
+      return { success: false, message: 'Could not connect to the server.' };
     }
-    return false;
   };
 
   const logout = () => setUser(null);

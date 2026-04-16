@@ -1,132 +1,116 @@
-# AffiliatDesk — IB / Affiliate Management Dashboard
+# AffiliatDesk
 
-## 1. Project Overview
-
-AffiliatDesk is a frontend-only IB (Introducing Broker) and affiliate management dashboard built for forex brokerages. It gives managers a single interface to monitor partner performance, track leads through the sales pipeline, review commission records, and analyze growth trends — all without a backend.
-
-Authentication is handled client-side with mock credentials (any non-empty email/password is accepted), making the app fully self-contained and ready to run out of the box.
+IB (Introducing Broker) and Affiliate Management Dashboard for forex brokerages. Gives managers a single interface to track leads, manage partner performance, and review commission records.
 
 ---
 
-## 2. Tech Stack
+## Stack
 
-| Category | Library / Tool |
+| Layer | Technology |
 |---|---|
-| Framework | React 19 |
-| Build tool | Vite 8 |
-| Routing | React Router DOM 7 |
-| UI component library | MUI (Material UI) 9 |
-| MUI icons | @mui/icons-material 9 |
-| Styling engine | Emotion (`@emotion/react`, `@emotion/styled`) |
-| Font | Roboto via `@fontsource/roboto` |
-| Linting | ESLint 9 + eslint-plugin-react-hooks + eslint-plugin-react-refresh |
-| Language | JavaScript (ESM) |
+| Frontend | React 19, Vite 8, React Router 7, MUI 9 |
+| Backend | Node.js, Express 5 |
+| Database | PostgreSQL |
+| ORM | Prisma 7 |
+| Password hashing | bcrypt |
 
 ---
 
-## 3. Features
+## Project Structure
 
-### Login / Sign Up
-- Mock authentication — any non-empty email and password grants access.
-- Sign Up creates a session with the provided name, email, and IB Manager role.
-- Public routes automatically redirect authenticated users to the dashboard.
-
-### Dashboard (`/dashboard`)
-- **KPI stat cards** — Total Leads, Active Affiliates, Commissions Due, and Conversion Rate, each with a month-over-month trend indicator.
-- **Top Affiliates table** — ranks partners by leads, commission earned, and conversion rate with visual progress bars.
-- **Recent Leads feed** — live-style list of the latest leads with country, affiliate code, and status badge.
-- **Monthly Performance Targets** — progress bars for Leads, Conversions, Commission Paid, and New Affiliates targets.
-
-### Leads (`/leads`)
-- Summary count cards for Total, New, Qualified, Converted, and Lost leads.
-- **Searchable, filterable table** — filter by status chip or free-text search across name, email, and country.
-- Displays lead ID, contact info, country, referring affiliate, traffic source, estimated deal value, date, and status.
-- Toolbar with Add Lead, Export CSV, and Refresh actions.
-
-### Affiliates (`/affiliates`)
-- Summary cards for Total, Active, Gold-Tier count, and average conversion rate.
-- **Partner table** — searchable and filterable by status (Active / Pending / Inactive).
-- Shows affiliate ID, country, tier (Gold / Silver / Bronze with star indicator), lead count, conversion rate bar, commission, and status.
-- Per-row action menu (MoreVert) and Export button.
-
-### Commissions (`/commissions`)
-- Summary cards for Total Commissions, Paid Out, Pending Payout, and Pay Rate.
-- **Payout progress bar** — shows current-month completion towards the total payout obligation.
-- **Commission records table** — period, leads, conversions, commission rate, gross volume, commission amount, status (Paid / Processing / Pending), and payment date.
-- Process Payouts and Export actions.
-
-### Reports (`/reports`)
-- **KPI row** — 6-month aggregates for Leads, Conversions, Commission, and Conversion Rate with growth indicators.
-- **Monthly Lead Volume bar chart** — CSS-rendered bar chart for the last 6 months with summary totals.
-- **Lead Sources breakdown** — horizontal progress bars showing volume and CPA per channel (Google Ads, Referral, Meta Ads, LinkedIn, Organic, Email).
-- **Top Countries table** — lead volume, distribution bar, conversion rate, and share per country.
-- Period selector (1M / 3M / 6M / 1Y) and Export Report button.
-
-### Layout & Navigation
-- Collapsible **sidebar** with dark navy background, active-route highlighting, and a badge on the Leads item.
-- **Dark / light mode** toggle via a custom `ThemeContext`.
-- Fully responsive — sidebar collapses to a drawer on mobile; all tables scroll horizontally on small screens.
-- User profile footer in the sidebar with logout.
+```
+my-dashboard/
+├── affiliate-desk/       # React frontend (Vite)
+│   ├── src/
+│   │   ├── contexts/     # AuthContext, ThemeContext
+│   │   ├── components/   # Layout, Sidebar
+│   │   └── pages/        # Login, SignUp, Dashboard, Leads, Affiliates, Commissions, Reports
+│   └── .env.example
+│
+└── backend/              # Express API
+    ├── controllers/      # authController, leadsController, ...
+    ├── routes/           # auth, leads, partners, commissions
+    ├── lib/prisma.js     # PrismaClient singleton
+    ├── prisma/
+    │   ├── schema.prisma
+    │   └── migrations/
+    └── .env.example
+```
 
 ---
 
-## 4. How to Run
+## Prerequisites
 
-**Prerequisites:** Node.js 18+ and npm.
+- Node.js 18+
+- PostgreSQL (running locally or via Docker)
+
+---
+
+## Setup
+
+### 1. Database
+
+Create the database and a dedicated user:
+
+```sql
+CREATE DATABASE dashboard_db;
+CREATE USER dashboard_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE dashboard_db TO dashboard_user;
+ALTER USER dashboard_user CREATEDB;   -- required for Prisma shadow database
+```
+
+### 2. Backend
 
 ```bash
-# 1. Navigate to the app directory
-cd affiliate-desk
-
-# 2. Install dependencies
+cd backend
+cp .env.example .env          # then edit .env with your real DATABASE_URL
 npm install
-
-# 3. Start the development server
-npm run dev
+npx prisma migrate dev        # apply migrations to dashboard_db
+node server.js                # starts on http://localhost:4000
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.  
-Log in with any email and password (e.g. `test@test.com` / `password`).
-
-**Other scripts:**
+### 3. Frontend
 
 ```bash
-npm run build     # Production build → dist/
-npm run preview   # Preview the production build locally
-npm run lint      # Run ESLint
+cd affiliate-desk
+cp .env.example .env          # edit VITE_API_URL if backend runs on a different port
+npm install
+npm run dev                   # starts on http://localhost:5173
 ```
+
+Open [http://localhost:5173](http://localhost:5173), register an account, then sign in.
 
 ---
 
-## 5. Folder Structure
+## API Endpoints
 
-```
-affiliate-desk/src/
-├── main.jsx                  # App entry point
-├── App.jsx                   # Router, auth guards, top-level providers
-├── index.css                 # Global base styles
-├── App.css                   # App-level overrides
-├── theme.js                  # MUI theme config (light + dark)
-│
-├── contexts/
-│   ├── AuthContext.jsx       # Mock auth state (login, signup, logout)
-│   └── ThemeContext.jsx      # Dark/light mode toggle
-│
-├── components/
-│   ├── Layout.jsx            # Shell with sidebar + top bar + <Outlet />
-│   └── Sidebar.jsx           # Navigation sidebar with user footer
-│
-├── pages/
-│   ├── Login.jsx             # Login page
-│   ├── SignUp.jsx            # Sign-up page
-│   ├── Dashboard.jsx         # Overview KPIs, top affiliates, recent leads
-│   ├── Leads.jsx             # Lead pipeline table
-│   ├── Affiliates.jsx        # Affiliate partner table
-│   ├── Commissions.jsx       # Commission records & payout tracker
-│   └── Reports.jsx           # Performance analytics & charts
-│
-└── assets/
-    ├── hero.png
-    ├── react.svg
-    └── vite.svg
-```
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register a new user |
+| POST | `/api/auth/login` | Login, returns name and role |
+| GET | `/api/leads` | List all leads (newest first) |
+| POST | `/api/leads` | Create a lead |
+| PUT | `/api/leads/:id` | Update a lead |
+| DELETE | `/api/leads/:id` | Delete a lead |
+
+All responses follow `{ success, data, message }`.
+
+---
+
+## Environment Variables
+
+**`backend/.env`**
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `PORT` | Express port (default `4000`) |
+| `FRONTEND_URL` | Allowed CORS origin (default `http://localhost:5173`) |
+
+**`affiliate-desk/.env`**
+
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | Backend base URL (default `http://localhost:4000`) |
+
+Never commit `.env` files. Use the `.env.example` files as templates.

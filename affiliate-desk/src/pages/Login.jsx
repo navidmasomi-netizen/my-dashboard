@@ -13,17 +13,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toggleColorMode, mode } = useColorMode();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email || !password) { setError('Please fill in all fields.'); return; }
-    const ok = login(email, password);
-    if (ok) navigate('/dashboard');
-    else setError('Invalid credentials.');
+    setLoading(true);
+    const result = await login(email, password);
+    setLoading(false);
+    if (result.success) navigate('/dashboard');
+    else setError(result.message);
   };
 
   return (
@@ -109,8 +112,8 @@ export default function Login() {
                 Forgot password?
               </Link>
             </Box>
-            <Button type="submit" variant="contained" fullWidth size="large">
-              Sign In
+            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign In'}
             </Button>
           </Box>
 

@@ -1,58 +1,163 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Card, CardContent, Typography, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Avatar,
-  TextField, InputAdornment, Button, Grid, IconButton, Tooltip
+  TextField, InputAdornment, Button, Grid, IconButton, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  DialogContentText, Alert, MenuItem, CircularProgress,
 } from '@mui/material';
-import { Search, FilterList, FileDownload, Refresh, Add } from '@mui/icons-material';
+import { Search, Refresh, Add, Edit, Delete } from '@mui/icons-material';
 
-const ALL_LEADS = [
-  { id: 'L-001', name: 'David Kim', email: 'd.kim@email.com', country: 'South Korea', affiliate: 'Sarah Chen', status: 'Qualified', source: 'Google Ads', date: '2026-04-08', value: '$5,000' },
-  { id: 'L-002', name: 'Fatima Al-Hassan', email: 'fatima@email.com', country: 'UAE', affiliate: 'Marcus Rivera', status: 'New', source: 'Referral', date: '2026-04-07', value: '$3,200' },
-  { id: 'L-003', name: 'Tomás García', email: 'tomas@email.com', country: 'Spain', affiliate: 'Aisha Patel', status: 'In Review', source: 'LinkedIn', date: '2026-04-07', value: '$8,500' },
-  { id: 'L-004', name: 'Anya Sokolova', email: 'anya@email.com', country: 'Russia', affiliate: 'Sarah Chen', status: 'Converted', source: 'Email', date: '2026-04-06', value: '$12,000' },
-  { id: 'L-005', name: 'Mohammed Al-Farsi', email: 'm.farsi@email.com', country: 'Saudi Arabia', affiliate: 'Marcus Rivera', status: 'Qualified', source: 'Meta Ads', date: '2026-04-06', value: '$7,500' },
-  { id: 'L-006', name: 'Yuki Tanaka', email: 'y.tanaka@email.com', country: 'Japan', affiliate: 'James O\'Brien', status: 'New', source: 'Organic', date: '2026-04-05', value: '$4,200' },
-  { id: 'L-007', name: 'Elena Müller', email: 'elena@email.com', country: 'Germany', affiliate: 'Lena Fischer', status: 'Lost', source: 'Google Ads', date: '2026-04-05', value: '$2,800' },
-  { id: 'L-008', name: 'Carlos Mendez', email: 'carlos@email.com', country: 'Mexico', affiliate: 'Aisha Patel', status: 'Converted', source: 'Referral', date: '2026-04-04', value: '$9,100' },
-  { id: 'L-009', name: 'Priya Nair', email: 'priya@email.com', country: 'India', affiliate: 'Sarah Chen', status: 'In Review', source: 'LinkedIn', date: '2026-04-04', value: '$6,300' },
-  { id: 'L-010', name: 'Ivan Petrov', email: 'ivan@email.com', country: 'Ukraine', affiliate: 'Marcus Rivera', status: 'Qualified', source: 'Meta Ads', date: '2026-04-03', value: '$5,800' },
-];
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+const STATUSES = ['New', 'Qualified', 'Pending', 'Lost'];
 
 const STATUS_COLORS = {
-  Qualified: 'primary', New: 'default', 'In Review': 'warning',
-  Converted: 'success', Lost: 'error',
+  New: 'default',
+  Qualified: 'primary',
+  Pending: 'warning',
+  Lost: 'error',
 };
 
-const STATUSES = ['All', 'New', 'Qualified', 'In Review', 'Converted', 'Lost'];
+const EMPTY_FORM = { name: '', email: '', country: '', status: 'New', assignedTo: '' };
 
 export default function Leads() {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState('');
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
 
-  const filtered = ALL_LEADS.filter((l) => {
-    const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
-      l.email.toLowerCase().includes(search.toLowerCase()) ||
-      l.country.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'All' || l.status === filter;
+  // Add / Edit dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState('add');
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+
+  // Delete confirmation
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchLeads = useCallback(async () => {
+    setLoading(true);
+    setPageError('');
+    try {
+      const res = await fetch(`${API}/api/leads`);
+      const json = await res.json();
+      if (json.success) setLeads(json.data);
+      else setPageError(json.message);
+    } catch {
+      setPageError('Could not connect to the server. Is the backend running?');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchLeads(); }, [fetchLeads]);
+
+  const openAdd = () => {
+    setForm(EMPTY_FORM);
+    setFormError('');
+    setDialogMode('add');
+    setDialogOpen(true);
+  };
+
+  const openEdit = (lead) => {
+    setForm({
+      name: lead.name,
+      email: lead.email,
+      country: lead.country ?? '',
+      status: lead.status,
+      assignedTo: lead.assignedTo ?? '',
+    });
+    setEditId(lead.id);
+    setFormError('');
+    setDialogMode('edit');
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    if (formLoading) return;
+    setDialogOpen(false);
+  };
+
+  const handleFormChange = (field) => (e) =>
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    setFormLoading(true);
+    try {
+      const url = dialogMode === 'add'
+        ? `${API}/api/leads`
+        : `${API}/api/leads/${editId}`;
+      const res = await fetch(url, {
+        method: dialogMode === 'add' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setDialogOpen(false);
+        fetchLeads();
+      } else {
+        setFormError(json.message);
+      }
+    } catch {
+      setFormError('Could not connect to the server.');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`${API}/api/leads/${deleteId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        setDeleteId(null);
+        fetchLeads();
+      } else {
+        setPageError(json.message);
+        setDeleteId(null);
+      }
+    } catch {
+      setPageError('Could not connect to the server.');
+      setDeleteId(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const filtered = leads.filter((l) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      l.name.toLowerCase().includes(q) ||
+      l.email.toLowerCase().includes(q) ||
+      (l.country ?? '').toLowerCase().includes(q);
+    const matchFilter = filterStatus === 'All' || l.status === filterStatus;
     return matchSearch && matchFilter;
   });
 
-  const counts = STATUSES.slice(1).reduce((acc, s) => {
-    acc[s] = ALL_LEADS.filter((l) => l.status === s).length;
+  const counts = STATUSES.reduce((acc, s) => {
+    acc[s] = leads.filter((l) => l.status === s).length;
     return acc;
   }, {});
 
   return (
     <Box>
-      {/* Summary chips */}
+      {/* Summary cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[
-          { label: 'Total', value: ALL_LEADS.length, color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
-          { label: 'New', value: counts.New, color: '#64748B', bg: 'rgba(100,116,139,0.1)' },
-          { label: 'Qualified', value: counts.Qualified, color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
-          { label: 'Converted', value: counts.Converted, color: '#16A34A', bg: 'rgba(22,163,74,0.1)' },
-          { label: 'Lost', value: counts.Lost, color: '#DC2626', bg: 'rgba(220,38,38,0.1)' },
+          { label: 'Total', value: leads.length, color: '#2563EB' },
+          { label: 'New', value: counts.New ?? 0, color: '#64748B' },
+          { label: 'Qualified', value: counts.Qualified ?? 0, color: '#2563EB' },
+          { label: 'Pending', value: counts.Pending ?? 0, color: '#D97706' },
+          { label: 'Lost', value: counts.Lost ?? 0, color: '#DC2626' },
         ].map((c) => (
           <Grid item xs={6} sm={4} md={2.4} key={c.label}>
             <Card>
@@ -65,17 +170,28 @@ export default function Leads() {
         ))}
       </Grid>
 
+      {pageError && (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
+
       <Card>
         <CardContent sx={{ p: 3 }}>
           {/* Toolbar */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
             <Typography variant="h6" sx={{ flex: 1 }}>Lead Pipeline</Typography>
-            <Button variant="contained" size="small" startIcon={<Add />}>Add Lead</Button>
-            <Tooltip title="Export CSV"><IconButton size="small"><FileDownload /></IconButton></Tooltip>
-            <Tooltip title="Refresh"><IconButton size="small"><Refresh /></IconButton></Tooltip>
+            <Button variant="contained" size="small" startIcon={<Add />} onClick={openAdd}>
+              Add New
+            </Button>
+            <Tooltip title="Refresh">
+              <IconButton size="small" onClick={fetchLeads} disabled={loading}>
+                <Refresh />
+              </IconButton>
+            </Tooltip>
           </Box>
 
-          {/* Search + filter */}
+          {/* Search + status filters */}
           <Box sx={{ display: 'flex', gap: 2, mb: 2.5, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               placeholder="Search leads..."
@@ -84,17 +200,21 @@ export default function Leads() {
               onChange={(e) => setSearch(e.target.value)}
               sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
               InputProps={{
-                startAdornment: <InputAdornment position="start"><Search sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
               }}
             />
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {STATUSES.map((s) => (
+              {['All', ...STATUSES].map((s) => (
                 <Chip
                   key={s}
-                  label={s === 'All' ? `All (${ALL_LEADS.length})` : `${s} (${counts[s] ?? 0})`}
-                  onClick={() => setFilter(s)}
-                  variant={filter === s ? 'filled' : 'outlined'}
-                  color={filter === s ? 'primary' : 'default'}
+                  label={s === 'All' ? `All (${leads.length})` : `${s} (${counts[s] ?? 0})`}
+                  onClick={() => setFilterStatus(s)}
+                  variant={filterStatus === s ? 'filled' : 'outlined'}
+                  color={filterStatus === s ? 'primary' : 'default'}
                   size="small"
                   sx={{ cursor: 'pointer' }}
                 />
@@ -103,54 +223,170 @@ export default function Leads() {
           </Box>
 
           {/* Table */}
-          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <Table size="small" sx={{ minWidth: 780 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Lead</TableCell>
-                  <TableCell>Country</TableCell>
-                  <TableCell>Affiliate</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Est. Value</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell align="center">Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filtered.map((l) => (
-                  <TableRow key={l.id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-                        <Avatar sx={{ width: 30, height: 30, fontSize: '0.72rem', background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
-                          {l.name.split(' ').map((n) => n[0]).join('').slice(0,2)}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600} lineHeight={1.2}>{l.name}</Typography>
-                          <Typography variant="caption" color="text.secondary">{l.email}</Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell><Typography variant="body2">{l.country}</Typography></TableCell>
-                    <TableCell><Typography variant="body2">{l.affiliate}</Typography></TableCell>
-                    <TableCell><Chip label={l.source} size="small" variant="outlined" /></TableCell>
-                    <TableCell><Typography variant="body2" fontWeight={600} color="success.main">{l.value}</Typography></TableCell>
-                    <TableCell><Typography variant="caption" color="text.secondary">{l.date}</Typography></TableCell>
-                    <TableCell align="center">
-                      <Chip label={l.status} size="small" color={STATUS_COLORS[l.status] || 'default'} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {filtered.length === 0 && (
-            <Box sx={{ textAlign: 'center', py: 5 }}>
-              <Typography color="text.secondary">No leads match your search.</Typography>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={32} />
             </Box>
+          ) : (
+            <>
+              <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <Table size="small" sx={{ minWidth: 680 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Lead</TableCell>
+                      <TableCell>Country</TableCell>
+                      <TableCell>Assigned To</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                      <TableCell>Created</TableCell>
+                      <TableCell align="center">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filtered.map((l) => (
+                      <TableRow key={l.id} hover>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                            <Avatar sx={{
+                              width: 30, height: 30, fontSize: '0.72rem',
+                              background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
+                            }}>
+                              {l.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                            </Avatar>
+                            <Box>
+                              <Typography variant="body2" fontWeight={600} lineHeight={1.2}>{l.name}</Typography>
+                              <Typography variant="caption" color="text.secondary">{l.email}</Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{l.country || '—'}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{l.assignedTo || '—'}</Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={l.status}
+                            size="small"
+                            color={STATUS_COLORS[l.status] || 'default'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(l.createdAt).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title="Edit">
+                            <IconButton size="small" onClick={() => openEdit(l)}>
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" color="error" onClick={() => setDeleteId(l.id)}>
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {filtered.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 5 }}>
+                  <Typography color="text.secondary">
+                    {leads.length === 0
+                      ? 'No leads yet. Click "Add New" to create your first lead.'
+                      : 'No leads match your search.'}
+                  </Typography>
+                </Box>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
+
+      {/* ── Add / Edit dialog ── */}
+      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>{dialogMode === 'add' ? 'Add New Lead' : 'Edit Lead'}</DialogTitle>
+        <Box component="form" onSubmit={handleFormSubmit}>
+          <DialogContent sx={{ pt: 1 }}>
+            {formError && (
+              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{formError}</Alert>
+            )}
+            <TextField
+              label="Full Name *"
+              fullWidth
+              value={form.name}
+              onChange={handleFormChange('name')}
+              sx={{ mb: 2 }}
+              autoFocus
+            />
+            <TextField
+              label="Email *"
+              type="email"
+              fullWidth
+              value={form.email}
+              onChange={handleFormChange('email')}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="Country"
+              fullWidth
+              value={form.country}
+              onChange={handleFormChange('country')}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="Status"
+              select
+              fullWidth
+              value={form.status}
+              onChange={handleFormChange('status')}
+              sx={{ mb: 2 }}
+            >
+              {STATUSES.map((s) => (
+                <MenuItem key={s} value={s}>{s}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Assigned To"
+              fullWidth
+              value={form.assignedTo}
+              onChange={handleFormChange('assignedTo')}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button onClick={closeDialog} disabled={formLoading}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={formLoading}>
+              {formLoading ? 'Saving…' : dialogMode === 'add' ? 'Add Lead' : 'Save Changes'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* ── Delete confirmation dialog ── */}
+      <Dialog
+        open={deleteId !== null}
+        onClose={() => { if (!deleteLoading) setDeleteId(null); }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete Lead</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will permanently delete the lead. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setDeleteId(null)} disabled={deleteLoading}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} disabled={deleteLoading}>
+            {deleteLoading ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Partner {
+  id          Int          @id @default(autoincrement())
+  name        String
+  email       String       @unique
+  country     String?
+  status      String       @default("active")
+  createdAt   DateTime     @default(now())
+  leads       Lead[]
+  commissions Commission[]
+}
+
+model Lead {
+  id          Int        @id @default(autoincrement())
+  name        String
+  email       String
+  country     String?
+  status      String     @default("New") // New | Qualified | Pending | Lost
+  assignedTo  String?
+  partnerId   Int?
+  partner     Partner?   @relation(fields: [partnerId], references: [id])
+  createdAt   DateTime   @default(now())
+  conversion  Conversion?
+}
+
+model Conversion {
+  id        Int      @id @default(autoincrement())
+  leadId    Int      @unique
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  amount    Float
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  role         String?
+  createdAt    DateTime @default(now())
+}
+
+model Commission {
+  id        Int      @id @default(autoincrement())
+  partnerId Int
+  partner   Partner  @relation(fields: [partnerId], references: [id])
+  amount    Float
+  type      String   @default("cpa") // cpa | revenue_share
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+}
